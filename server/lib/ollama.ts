@@ -61,6 +61,9 @@ function extractJsonObject(raw: string): unknown {
 }
 
 async function chat(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS)
+
   let res: Response
   try {
     res = await fetch(`${env.ollamaUrl}/api/chat`, {
@@ -71,12 +74,13 @@ async function chat(messages: Array<{ role: string; content: string }>): Promise
         messages,
         stream: false,
         format: 'json',
+        think: false,
         options: { temperature: 0.2 },
       }),
-      signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+      signal: controller.signal,
     })
   } catch (err) {
-    if (err instanceof Error && err.name === 'TimeoutError') {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
       throw new OllamaError(
         'Модель не ответила вовремя. Попробуйте сократить текст ТЗ.',
         'unavailable',
@@ -86,6 +90,8 @@ async function chat(messages: Array<{ role: string; content: string }>): Promise
       'Ollama недоступна. Запустите Ollama: ollama serve',
       'unavailable',
     )
+  } finally {
+    clearTimeout(timer)
   }
 
   if (!res.ok) {
@@ -112,7 +118,14 @@ async function chat(messages: Array<{ role: string; content: string }>): Promise
 
 function parseAnalysis(raw: string): LlmAnalysis {
   const parsed = extractJsonObject(raw)
-  return llmAnalysisSchema.parse(parsed)
+  const result = llmAnalysisSchema.safeParse(parsed)
+  if (!result.success) {
+    const details = result.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ')
+    throw new Error(`Invalid analysis JSON: ${details}`)
+  }
+  return result.data
 }
 
 export async function analyzeWithOllama(text: string): Promise<LlmAnalysis> {
