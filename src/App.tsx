@@ -6,7 +6,8 @@ import ResultsStep from './components/ResultsStep'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
 import { useAuth } from './context/AuthContext'
-import { analyzeText, type AnalysisResult } from './lib/analyzer'
+import { apiFetch, ApiError } from './lib/api'
+import type { AnalysisResult } from '../shared/analysis'
 
 type Step = 'input' | 'analyzing' | 'results'
 type AuthView = 'login' | 'register'
@@ -17,20 +18,36 @@ export default function App() {
   const [step, setStep] = useState<Step>('input')
   const [text, setText] = useState('')
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
-  const handleAnalyze = useCallback(() => {
+  const handleSetText = useCallback((value: string) => {
+    setText(value)
+    setAnalysisError(null)
+  }, [])
+
+  const handleAnalyze = useCallback(async () => {
     if (!text.trim()) return
+    setAnalysisError(null)
     setStep('analyzing')
-    setTimeout(() => {
-      const res = analyzeText(text)
+    try {
+      const res = await apiFetch<AnalysisResult>('/api/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      })
       setResult(res)
       setStep('results')
-    }, 2600)
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Не удалось проанализировать ТЗ'
+      setAnalysisError(message)
+      setStep('input')
+    }
   }, [text])
 
   const handleReset = useCallback(() => {
     setStep('input')
     setResult(null)
+    setAnalysisError(null)
   }, [])
 
   if (loading) {
@@ -61,8 +78,9 @@ export default function App() {
         {step === 'input' && (
           <InputStep
             text={text}
-            setText={setText}
+            setText={handleSetText}
             onAnalyze={handleAnalyze}
+            analysisError={analysisError}
           />
         )}
 
@@ -74,7 +92,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-100 py-6 text-center text-xs text-slate-400">
-        ТЗ-Ассистент · Прототип · Эвристический анализ на клиенте
+        ТЗ-Ассистент · Прототип · Анализ LLM · Ollama (qwen3.5:4b-nvfp4)
       </footer>
     </div>
   )

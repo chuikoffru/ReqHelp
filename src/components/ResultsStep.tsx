@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AnalysisResult, EntityType, Severity } from '../lib/analyzer'
+import type { AnalysisResult, EntityType, Severity } from '../../shared/analysis'
 import { buildMarkdown, downloadText, copyToClipboard } from '../lib/exporter'
 
 // ---------- Цвета ----------

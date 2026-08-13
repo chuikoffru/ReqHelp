@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react'
 import { SAMPLES } from '../lib/samples'
+import { MAX_TZ_CHARS } from '../../shared/analysis'
 
 interface InputStepProps {
   text: string
   setText: (t: string) => void
   onAnalyze: () => void
+  analysisError?: string | null
 }
 
-export default function InputStep({ text, setText, onAnalyze }: InputStepProps) {
+export default function InputStep({ text, setText, onAnalyze, analysisError }: InputStepProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -19,8 +21,13 @@ export default function InputStep({ text, setText, onAnalyze }: InputStepProps) 
       setError('Поддерживаются текстовые файлы (.txt, .md). Для Word скопируйте содержимое в поле ниже.')
       return
     }
-    setError(null)
     const content = await file.text()
+    if (content.length > MAX_TZ_CHARS) {
+      setText(content.slice(0, MAX_TZ_CHARS))
+      setError(`Файл слишком большой. Текст обрезан до ${MAX_TZ_CHARS} символов.`)
+      return
+    }
+    setError(null)
     setText(content)
   }
 
@@ -102,6 +109,12 @@ export default function InputStep({ text, setText, onAnalyze }: InputStepProps) 
         {error && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {error}
+          </p>
+        )}
+
+        {analysisError && (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            {analysisError}
           </p>
         )}
       </div>

@@ -1,61 +1,17 @@
-// Эвристический анализатор текста ТЗ для прототипа.
-// Ищет объекты конфигурации, реквизиты, разделы и пробелы в требованиях.
-// В финальной версии заменяется вызовом AI-модели с доступом к структуре конфигурации.
+// Эвристический анализатор текста ТЗ (резервный, не используется в UI).
+// Основной путь — LLM через /api/analyze.
 
-export type EntityType =
-  | 'Документ'
-  | 'Справочник'
-  | 'Регистр'
-  | 'Отчёт'
-  | 'Обработка'
-  | 'Перечисление'
-  | 'Константа'
-  | 'Бизнес-процесс'
-  | 'Объект'
-
-export type Confidence = 'высокая' | 'средняя' | 'низкая'
-
-export interface FoundEntity {
-  name: string
-  type: EntityType
-  confidence: Confidence
-  context: string
-  count: number
-}
-
-export interface FoundAttribute {
-  name: string
-  context: string
-  count: number
-}
-
-export interface FoundSection {
-  name: string
-  count: number
-}
-
-export type Severity = 'critical' | 'warning' | 'info'
-
-export interface Gap {
-  id: string
-  title: string
-  description: string
-  question: string
-  severity: Severity
-}
-
-export interface Recommendation {
-  text: string
-}
-
-export interface AnalysisResult {
-  words: number
-  entities: FoundEntity[]
-  attributes: FoundAttribute[]
-  sections: FoundSection[]
-  gaps: Gap[]
-  recommendations: Recommendation[]
-}
+import type {
+  AnalysisResult,
+  Confidence,
+  EntityType,
+  FoundAttribute,
+  FoundEntity,
+  FoundSection,
+  Gap,
+  Recommendation,
+  Severity,
+} from '../../shared/analysis'
 
 // ---------- Словари ----------
 

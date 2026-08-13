@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import './db'
 import { env } from './lib/env'
 import authRoutes from './routes/auth'
+import analyzeRoutes from './routes/analyze'
 
 const app = new Hono()
 
@@ -17,6 +18,7 @@ app.use(
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.route('/api/auth', authRoutes)
+app.route('/api/analyze', analyzeRoutes)
 
 serve({ fetch: app.fetch, port: env.port }, (info) => {
   console.log(`API listening on http://localhost:${info.port}`)

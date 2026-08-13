@@ -17,4 +17,6 @@ export const env = {
   databasePath: required('DATABASE_PATH', './data/app.db'),
   allowRegistration: (process.env.ALLOW_REGISTRATION ?? 'true') !== 'false',
   isProd: process.env.NODE_ENV === 'production',
+  ollamaUrl: required('OLLAMA_URL', 'http://localhost:11434'),
+  ollamaModel: required('OLLAMA_MODEL', 'qwen3.5:4b-nvfp4'),
 }

@@ -1,4 +1,4 @@
-import type { AnalysisResult } from './analyzer'
+import type { AnalysisResult } from '../../shared/analysis'
 
 export function buildMarkdown(result: AnalysisResult): string {
   const lines: string[] = []
