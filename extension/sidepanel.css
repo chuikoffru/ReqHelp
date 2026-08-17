@@ -104,3 +104,67 @@ main { padding: 16px; }
   .spinner { animation: none; }
   .progress > span { transition: none; }
 }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.stat {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+.stat strong { display: block; font-size: 20px; }
+.stat span { font-size: 11px; color: var(--muted); }
+.stat.blue { background: #eff6ff; border-color: #bfdbfe; }
+.stat.violet { background: #f5f3ff; border-color: #ddd6fe; }
+.stat.amber { background: #fffbeb; border-color: #fde68a; }
+.stat.rose { background: #fff1f2; border-color: #fecdd3; }
+section { margin-bottom: 20px; }
+section h2 { font-size: 15px; margin: 0 0 8px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; background: #f8fafc; padding: 8px; text-transform: uppercase; font-size: 10px; color: #475569; }
+td { padding: 8px; border-top: 1px solid #f1f5f9; }
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.type-badge[data-type="Документ"] { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.type-badge[data-type="Справочник"] { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+.type-badge[data-type="Регистр"] { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.type-badge[data-type="Отчёт"] { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.type-badge[data-type="Обработка"] { background: #fce7f3; color: #9d174d; border-color: #fbcfe8; }
+.type-badge[data-type="Перечисление"] { background: #cffafe; color: #155e75; border-color: #a5f3fc; }
+.type-badge[data-type="Константа"] { background: #f1f5f9; color: #1e293b; border-color: #e2e8f0; }
+.type-badge[data-type="Бизнес-процесс"] { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+.type-badge[data-type="Объект"] { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+.conf-высокая { background: #dcfce7; color: #15803d; }
+.conf-средняя { background: #fef9c3; color: #a16207; }
+.conf-низкая { background: #f1f5f9; color: #64748b; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tag.plain { background: #fff; border-color: var(--line); color: #334155; }
+.gap {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.gap.critical { background: #fff1f2; border-color: #fecdd3; }
+.gap.warning { background: #fffbeb; border-color: #fde68a; }
+.gap.info { background: #f0f9ff; border-color: #bae6fd; }
+.gap .sev { font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; border-radius: 10px; padding: 12px; }
+.rec { display: flex; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.rec .mark { color: var(--indigo); }
+.row-btns { display: flex; flex-direction: column; gap: 8px; }

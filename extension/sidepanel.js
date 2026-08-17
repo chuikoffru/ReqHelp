@@ -1,4 +1,5 @@
 import { MIN_TZ_CHARS, ERROR_MESSAGES, SITE_URL } from './config.js'
+import { buildMarkdown } from './markdown.js'
 
 const app = document.getElementById('app')
 const panelTabId = Number.parseInt(new URLSearchParams(window.location.search).get('tabId') ?? '', 10)
@@ -9,6 +10,7 @@ const ANALYZE_STEPS = [
   'Проверка пробелов в требованиях',
   'Формирование отчёта',
 ]
+const SEVERITY_LABELS = { critical: 'Критично', warning: 'Важно', info: 'Уточнить' }
 
 let currentCapture = null
 
@@ -76,9 +78,7 @@ function renderIdle(capture) {
         renderError(message)
         return
       }
-      setAppHtml(`<p>Анализ готов: ${res.result?.entities?.length ?? 0} объектов. Полный отчёт — в следующем шаге.</p>
-        <button class="btn btn-ghost" id="reset">Новый анализ</button>`)
-      document.getElementById('reset').onclick = init
+      renderResults(res.result)
     } catch {
       renderError(ERROR_MESSAGES.unavailable)
     }
@@ -113,6 +113,116 @@ function renderAnalyzing() {
     }
   }, 700)
   renderAnalyzing._timer = timer
+}
+
+function renderResults(result) {
+  const entityRows =
+    result.entities.length === 0
+      ? `<p class="muted">Явных имён объектов не обнаружено. Укажите их в кавычках с типом, например «Документ „Заказ клиента“».</p>`
+      : `<div class="table-wrap"><table>
+          <thead><tr><th>Объект</th><th>Тип</th><th>Уверенность</th><th>Упоминаний</th></tr></thead>
+          <tbody>
+            ${result.entities
+              .map(
+                (e) => `<tr>
+                  <td>${escapeHtml(e.name)}</td>
+                  <td><span class="badge type-badge" data-type="${escapeHtml(e.type)}">${escapeHtml(e.type)}</span></td>
+                  <td><span class="badge conf-${escapeHtml(e.confidence)}">${escapeHtml(e.confidence)}</span></td>
+                  <td style="text-align:right">${e.count}</td>
+                </tr>`,
+              )
+              .join('')}
+          </tbody>
+        </table></div>`
+
+  const attrs =
+    result.attributes.length === 0
+      ? `<p class="muted">Реквизиты не обнаружены.</p>`
+      : `<div class="tags">${result.attributes
+          .map((a) => `<span class="tag">${escapeHtml(a.name)} <small>×${a.count}</small></span>`)
+          .join('')}</div>`
+
+  const sections =
+    result.sections.length === 0
+      ? `<p class="muted">Разделы не определены.</p>`
+      : `<div class="tags">${result.sections
+          .map((s) => `<span class="tag plain">${escapeHtml(s.name)} <small>×${s.count}</small></span>`)
+          .join('')}</div>`
+
+  const gaps =
+    result.gaps.length === 0
+      ? `<p class="ok">Существенных пробелов не выявлено.</p>`
+      : result.gaps
+          .map(
+            (g) => `<div class="gap ${g.severity}">
+              <div class="sev">${SEVERITY_LABELS[g.severity] ?? g.severity}</div>
+              <strong>${escapeHtml(g.title)}</strong>
+              <p>${escapeHtml(g.description)}</p>
+              <p><span class="muted">Уточнить:</span> ${escapeHtml(g.question)}</p>
+            </div>`,
+          )
+          .join('')
+
+  const recs =
+    result.recommendations.length === 0
+      ? `<p class="muted">Нет дополнительных рекомендаций.</p>`
+      : result.recommendations
+          .map((r) => `<div class="rec"><span class="mark">✦</span><span>${escapeHtml(r.text)}</span></div>`)
+          .join('')
+
+  setAppHtml(`
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <h2 style="margin:0;font-size:18px">Результаты анализа</h2>
+        <p class="muted">Результаты носят рекомендательный характер и требуют проверки человеком.</p>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="reset" style="margin-bottom:16px">Новый анализ</button>
+    <div class="stats">
+      <div class="stat"><strong>${result.words}</strong><span>Слов в ТЗ</span></div>
+      <div class="stat blue"><strong>${result.entities.length}</strong><span>Объектов</span></div>
+      <div class="stat violet"><strong>${result.attributes.length}</strong><span>Реквизитов</span></div>
+      <div class="stat amber"><strong>${result.sections.length}</strong><span>Разделов</span></div>
+      <div class="stat rose"><strong>${result.gaps.length}</strong><span>Пробелов</span></div>
+    </div>
+    <section><h2>Найденные объекты конфигурации</h2>${entityRows}</section>
+    <section><h2>Предполагаемые реквизиты</h2>${attrs}</section>
+    <section><h2>Затронутые разделы конфигурации</h2>${sections}</section>
+    <section><h2>Пробелы и вопросы для уточнения</h2>${gaps}</section>
+    <section><h2>Рекомендации</h2>${recs}</section>
+    <section>
+      <h2>Экспорт результата</h2>
+      <div class="row-btns">
+        <button class="btn btn-primary" id="download">Скачать .md</button>
+        <button class="btn btn-ghost" id="copy">Скопировать</button>
+      </div>
+    </section>
+  `)
+
+  document.getElementById('reset').onclick = init
+
+  const markdown = buildMarkdown(result)
+  document.getElementById('copy').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(markdown)
+      document.getElementById('copy').textContent = '✓ Скопировано'
+      setTimeout(() => {
+        const btn = document.getElementById('copy')
+        if (btn) btn.textContent = 'Скопировать'
+      }, 2000)
+    } catch {
+      document.getElementById('copy').textContent = 'Не удалось скопировать'
+    }
+  }
+  document.getElementById('download').onclick = () => {
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'анализ-тз.md'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 }
 
 function escapeHtml(s) {
