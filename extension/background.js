@@ -2,6 +2,28 @@ import { SITE_URL, SITE_URL_ALT, COOKIE_NAME, MAX_TZ_CHARS } from './config.js'
 
 const pendingCaptures = new Map()
 
+function getSidePanelPath(tabId) {
+  return `sidepanel.html?tabId=${tabId}`
+}
+
+async function configurePanelForTab(tabId) {
+  if (!Number.isInteger(tabId) || tabId < 0) return
+  try {
+    await chrome.sidePanel.setOptions({
+      tabId,
+      path: getSidePanelPath(tabId),
+      enabled: true,
+    })
+  } catch {
+    // Некоторые служебные вкладки могут быть недоступны для конфигурации панели.
+  }
+}
+
+async function configureExistingTabs() {
+  const tabs = await chrome.tabs.query({})
+  await Promise.all(tabs.map((tab) => configurePanelForTab(tab.id)))
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   chrome.contextMenus.create({
@@ -9,10 +31,12 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Проанализировать ТЗ',
     contexts: ['selection', 'page'],
   })
+  configureExistingTabs()
 })
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
+  configureExistingTabs()
 })
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -29,7 +53,20 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   } else {
     pendingCaptures.delete(tab.id)
   }
+  await configurePanelForTab(tab.id)
   await chrome.sidePanel.open({ tabId: tab.id })
+})
+
+chrome.tabs.onCreated.addListener((tab) => {
+  configurePanelForTab(tab.id)
+})
+
+chrome.tabs.onUpdated.addListener((tabId, _changeInfo, _tab) => {
+  configurePanelForTab(tabId)
+})
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  configurePanelForTab(tabId)
 })
 
 async function getAuthToken() {
@@ -83,8 +120,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg?.type === 'CAPTURE_TEXT') {
     ;(async () => {
-      const tabId = _sender.tab?.id
-      if (!tabId) {
+      const tabId = Number.isInteger(msg?.tabId) ? msg.tabId : null
+      if (!Number.isInteger(tabId)) {
         sendResponse({ ok: false, error: 'page_unavailable' })
         return
       }

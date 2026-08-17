@@ -1,6 +1,7 @@
 import { MIN_TZ_CHARS, ERROR_MESSAGES, SITE_URL } from './config.js'
 
 const app = document.getElementById('app')
+const panelTabId = Number.parseInt(new URLSearchParams(window.location.search).get('tabId') ?? '', 10)
 
 function countWords(text) {
   return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0
@@ -46,7 +47,7 @@ async function init() {
     renderNeedLogin()
     return
   }
-  const capture = await chrome.runtime.sendMessage({ type: 'CAPTURE_TEXT' })
+  const capture = await chrome.runtime.sendMessage({ type: 'CAPTURE_TEXT', tabId: panelTabId })
   if (!capture?.ok) {
     renderUnavailable()
     return
