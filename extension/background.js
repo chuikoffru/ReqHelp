@@ -1,12 +1,13 @@
 import { SITE_URL, SITE_URL_ALT, API_URL, COOKIE_NAME, MAX_TZ_CHARS } from './config.js'
 
 const pendingCaptures = new Map()
+const lastConfiguredTabByWindow = new Map()
 
 function getSidePanelPath(tabId) {
   return `sidepanel.html?tabId=${tabId}`
 }
 
-async function configurePanelForTab(tabId) {
+async function configurePanelForTab(tabId, windowId) {
   if (!Number.isInteger(tabId) || tabId < 0) return
   try {
     await chrome.sidePanel.setOptions({
@@ -14,6 +15,9 @@ async function configurePanelForTab(tabId) {
       path: getSidePanelPath(tabId),
       enabled: true,
     })
+    if (Number.isInteger(windowId)) {
+      lastConfiguredTabByWindow.set(windowId, tabId)
+    }
   } catch {
     // Некоторые служебные вкладки могут быть недоступны для конфигурации панели.
   }
@@ -21,7 +25,12 @@ async function configurePanelForTab(tabId) {
 
 async function configureExistingTabs() {
   const tabs = await chrome.tabs.query({})
-  await Promise.all(tabs.map((tab) => configurePanelForTab(tab.id)))
+  await Promise.all(tabs.map((tab) => configurePanelForTab(tab.id, tab.windowId)))
+  for (const tab of tabs) {
+    if (tab.active && Number.isInteger(tab.id) && Number.isInteger(tab.windowId)) {
+      lastConfiguredTabByWindow.set(tab.windowId, tab.id)
+    }
+  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -40,7 +49,7 @@ chrome.runtime.onStartup.addListener(() => {
 })
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== 'analyze-tz' || !tab?.id) return
+  if (info.menuItemId !== 'analyze-tz' || !Number.isInteger(tab?.id)) return
   const selected = (info.selectionText ?? '').trim()
   if (selected) {
     const truncated = selected.length > MAX_TZ_CHARS
@@ -53,20 +62,44 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   } else {
     pendingCaptures.delete(tab.id)
   }
-  await configurePanelForTab(tab.id)
-  await chrome.sidePanel.open({ tabId: tab.id })
+
+  // open() должен быть вызван в том же синхронном такте, что и пользовательский клик.
+  const openingPanel = chrome.sidePanel.open({ tabId: tab.id })
+  await configurePanelForTab(tab.id, tab.windowId)
+  await openingPanel
+
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'RECAPTURE',
+      tabId: tab.id,
+      windowId: tab.windowId,
+    })
+  } catch {
+    // Новая панель сама вызовет init(); получателя может ещё не быть.
+  }
 })
 
 chrome.tabs.onCreated.addListener((tab) => {
-  configurePanelForTab(tab.id)
+  configurePanelForTab(tab.id, tab.windowId)
 })
 
-chrome.tabs.onUpdated.addListener((tabId, _changeInfo, _tab) => {
-  configurePanelForTab(tabId)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    configurePanelForTab(tabId, tab.windowId)
+  }
 })
 
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  configurePanelForTab(tabId)
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  configurePanelForTab(tabId, windowId)
+})
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  pendingCaptures.delete(tabId)
+  for (const [windowId, configuredTabId] of lastConfiguredTabByWindow) {
+    if (configuredTabId === tabId) {
+      lastConfiguredTabByWindow.delete(windowId)
+    }
+  }
 })
 
 async function getAuthToken() {
@@ -83,6 +116,28 @@ function takePendingCapture(tabId) {
     pendingCaptures.delete(tabId)
   }
   return capture
+}
+
+async function resolveCaptureTabId(requestedTabId) {
+  if (Number.isInteger(requestedTabId) && requestedTabId >= 0) {
+    return requestedTabId
+  }
+
+  try {
+    const lastFocusedWindow = await chrome.windows.getLastFocused()
+    const configuredTabId = lastConfiguredTabByWindow.get(lastFocusedWindow.id)
+    if (Number.isInteger(configuredTabId)) {
+      return configuredTabId
+    }
+  } catch {
+    // Перейдём к активной вкладке последнего активного окна.
+  }
+
+  const [activeTab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  })
+  return Number.isInteger(activeTab?.id) ? activeTab.id : null
 }
 
 async function captureFromTab(tabId) {
@@ -120,7 +175,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg?.type === 'CAPTURE_TEXT') {
     ;(async () => {
-      const tabId = Number.isInteger(msg?.tabId) ? msg.tabId : null
+      const tabId = await resolveCaptureTabId(msg?.tabId)
       if (!Number.isInteger(tabId)) {
         sendResponse({ ok: false, error: 'page_unavailable' })
         return

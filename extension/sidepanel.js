@@ -2,7 +2,8 @@ import { MIN_TZ_CHARS, ERROR_MESSAGES, SITE_URL } from './config.js'
 import { buildMarkdown } from './markdown.js'
 
 const app = document.getElementById('app')
-const panelTabId = Number.parseInt(new URLSearchParams(window.location.search).get('tabId') ?? '', 10)
+const parsedPanelTabId = Number.parseInt(new URLSearchParams(window.location.search).get('tabId') ?? '', 10)
+const panelTabId = Number.isInteger(parsedPanelTabId) ? parsedPanelTabId : null
 const ANALYZE_STEPS = [
   'Разбор текста ТЗ',
   'Поиск объектов конфигурации',
@@ -230,9 +231,10 @@ function escapeHtml(s) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
 }
 
-async function init() {
+async function init(tabId = panelTabId) {
   try {
     const session = await chrome.runtime.sendMessage({ type: 'GET_SESSION' })
     if (!session?.loggedIn) {
@@ -240,7 +242,7 @@ async function init() {
       renderNeedLogin()
       return
     }
-    const capture = await chrome.runtime.sendMessage({ type: 'CAPTURE_TEXT', tabId: panelTabId })
+    const capture = await chrome.runtime.sendMessage({ type: 'CAPTURE_TEXT', tabId })
     if (!capture?.ok) {
       currentCapture = null
       renderUnavailable()
@@ -253,5 +255,18 @@ async function init() {
     renderError(ERROR_MESSAGES.unavailable)
   }
 }
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== 'RECAPTURE' || !Number.isInteger(msg.tabId)) return
+  if (Number.isInteger(panelTabId) && panelTabId !== msg.tabId) return
+
+  ;(async () => {
+    if (Number.isInteger(msg.windowId)) {
+      const currentWindow = await chrome.windows.getCurrent()
+      if (currentWindow.id !== msg.windowId) return
+    }
+    await init(msg.tabId)
+  })()
+})
 
 init()

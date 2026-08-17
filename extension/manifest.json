@@ -3,7 +3,7 @@
   "name": "ТЗ-Ассистент",
   "version": "1.0.0",
   "description": "Анализ текста ТЗ со страницы — объекты, реквизиты, пробелы и рекомендации.",
-  "minimum_chrome_version": "114",
+  "minimum_chrome_version": "116",
   "action": {
     "default_title": "ТЗ-Ассистент",
     "default_icon": {
