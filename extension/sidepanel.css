@@ -69,3 +69,38 @@ main { padding: 16px; }
 .banner-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
 .banner-error { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
 .meta { font-size: 12px; color: var(--muted); margin: 8px 0 12px; }
+.steps { list-style: none; padding: 0; margin: 16px 0 0; }
+.step {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  color: #94a3b8;
+}
+.step.active { border-color: #c7d2fe; background: #eef2ff; color: #3730a3; }
+.step.done { border-color: #c7d2fe; background: #eef2ff; color: #3730a3; font-weight: 600; }
+.progress { height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--indigo);
+  width: 0;
+  transition: width 0.3s ease;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #c7d2fe;
+  border-top-color: var(--indigo);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+  .progress > span { transition: none; }
+}

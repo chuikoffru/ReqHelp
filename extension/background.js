@@ -1,4 +1,4 @@
-import { SITE_URL, SITE_URL_ALT, COOKIE_NAME, MAX_TZ_CHARS } from './config.js'
+import { SITE_URL, SITE_URL_ALT, API_URL, COOKIE_NAME, MAX_TZ_CHARS } from './config.js'
 
 const pendingCaptures = new Map()
 
@@ -133,6 +133,72 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       sendResponse(await captureFromTab(tabId))
+    })()
+    return true
+  }
+
+  if (msg?.type === 'ANALYZE') {
+    ;(async () => {
+      const token = await getAuthToken()
+      if (!token) {
+        sendResponse({
+          ok: false,
+          code: 'need_login',
+          error: 'Войдите на сайте ТЗ-Ассистент',
+        })
+        return
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/api/analyze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text: msg?.text }),
+        })
+
+        let data = null
+        const raw = await res.text()
+        if (raw) {
+          try {
+            data = JSON.parse(raw)
+          } catch {
+            data = { error: raw }
+          }
+        }
+
+        if (res.status === 401) {
+          sendResponse({
+            ok: false,
+            code: 'need_login',
+            error: 'Войдите на сайте ТЗ-Ассистент',
+          })
+          return
+        }
+
+        if (!res.ok) {
+          const message =
+            data && typeof data === 'object' && typeof data.error === 'string'
+              ? data.error
+              : 'Не удалось проанализировать ТЗ'
+          sendResponse({
+            ok: false,
+            code: 'server',
+            error: message,
+          })
+          return
+        }
+
+        sendResponse({ ok: true, result: data })
+      } catch {
+        sendResponse({
+          ok: false,
+          code: 'unavailable',
+          error: 'Сервер недоступен. Запустите сайт (`npm run dev`) и попробуйте снова.',
+        })
+      }
     })()
     return true
   }
