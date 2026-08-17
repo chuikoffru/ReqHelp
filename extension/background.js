@@ -1,6 +1,6 @@
 import { SITE_URL, SITE_URL_ALT, COOKIE_NAME, MAX_TZ_CHARS } from './config.js'
 
-let pendingCapture = null
+const pendingCaptures = new Map()
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
@@ -20,14 +20,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const selected = (info.selectionText ?? '').trim()
   if (selected) {
     const truncated = selected.length > MAX_TZ_CHARS
-    pendingCapture = {
+    pendingCaptures.set(tab.id, {
       ok: true,
       text: truncated ? selected.slice(0, MAX_TZ_CHARS) : selected,
       truncated,
       source: 'selection',
-    }
+    })
   } else {
-    pendingCapture = null
+    pendingCaptures.delete(tab.id)
   }
   await chrome.sidePanel.open({ tabId: tab.id })
 })
@@ -40,9 +40,12 @@ async function getAuthToken() {
   return null
 }
 
-async function getActiveTab() {
-  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
-  return tabs[0] ?? null
+function takePendingCapture(tabId) {
+  const capture = pendingCaptures.get(tabId) ?? null
+  if (capture) {
+    pendingCaptures.delete(tabId)
+  }
+  return capture
 }
 
 async function captureFromTab(tabId) {
@@ -80,18 +83,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg?.type === 'CAPTURE_TEXT') {
     ;(async () => {
-      if (pendingCapture) {
-        const capture = pendingCapture
-        pendingCapture = null
-        sendResponse(capture)
-        return
-      }
-      const tab = await getActiveTab()
-      if (!tab?.id) {
+      const tabId = _sender.tab?.id
+      if (!tabId) {
         sendResponse({ ok: false, error: 'page_unavailable' })
         return
       }
-      sendResponse(await captureFromTab(tab.id))
+
+      const pendingCapture = takePendingCapture(tabId)
+      if (pendingCapture) {
+        sendResponse(pendingCapture)
+        return
+      }
+
+      sendResponse(await captureFromTab(tabId))
     })()
     return true
   }
