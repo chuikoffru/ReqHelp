@@ -11,8 +11,14 @@ const app = new Hono()
 app.use(
   '/api/*',
   cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (origin) => {
+      const allowed = ['http://localhost:5173', 'http://127.0.0.1:5173']
+      if (allowed.includes(origin)) return origin
+      if (origin.startsWith('chrome-extension://')) return origin
+      return undefined
+    },
     credentials: true,
+    allowHeaders: ['Content-Type', 'Authorization'],
   }),
 )
 

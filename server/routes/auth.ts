@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { deleteCookie, setCookie } from 'hono/cookie'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { createUser, findUserById, findUserByLogin } from '../db'
 import { env } from '../lib/env'
 import { COOKIE_NAME, cookieOptions, signToken, verifyToken } from '../lib/token'
-import type { AuthVariables } from '../middleware/auth'
+import { getAuthToken, type AuthVariables } from '../middleware/auth'
 
 const credentialsSchema = z.object({
   login: z
@@ -88,7 +88,7 @@ auth.post('/logout', (c) => {
 })
 
 auth.get('/me', async (c) => {
-  const token = getCookie(c, COOKIE_NAME)
+  const token = getAuthToken(c)
   if (!token) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
