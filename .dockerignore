@@ -11,3 +11,5 @@ data
 docs
 samples
 extension
+README.md
+docker-compose*.yml

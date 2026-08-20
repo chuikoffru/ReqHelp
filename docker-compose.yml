@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_PATH: /app/data/app.db
+    volumes:
+      - reqhelp-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  reqhelp-data:
