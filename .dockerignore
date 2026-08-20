@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.worktrees
+.superpowers
+data
+.env
+*.db
+*.db-*
+.DS_Store
+docs
+samples
+extension

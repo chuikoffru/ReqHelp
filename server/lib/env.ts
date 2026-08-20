@@ -17,6 +17,7 @@ export const env = {
   databasePath: required('DATABASE_PATH', './data/app.db'),
   allowRegistration: (process.env.ALLOW_REGISTRATION ?? 'true') !== 'false',
   isProd: process.env.NODE_ENV === 'production',
+  appOrigin: process.env.APP_ORIGIN ?? '',
   openrouterApiKey: process.env.OPENROUTER_API_KEY ?? '',
   openrouterModel: required('OPENROUTER_MODEL', 'deepseek/deepseek-v4-flash-0731'),
   openrouterUrl: required('OPENROUTER_URL', 'https://openrouter.ai/api/v1'),
