@@ -126,3 +126,78 @@ export const llmAnalysisSchema = z.object({
 export const analysisResultSchema = llmAnalysisSchema.extend({
   words: z.number().int().nonnegative(),
 })
+
+/** JSON Schema для OpenRouter structured outputs (`response_format: json_schema`). */
+export const llmAnalysisJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    entities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string', description: 'Имя объекта конфигурации' },
+          type: { type: 'string', enum: [...ENTITY_TYPES] },
+          confidence: { type: 'string', enum: [...CONFIDENCE_LEVELS] },
+          context: { type: 'string', description: 'Краткая цитата или пересказ фрагмента ТЗ' },
+          count: { type: 'integer', minimum: 1 },
+        },
+        required: ['name', 'type', 'confidence', 'context', 'count'],
+      },
+    },
+    attributes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          context: { type: 'string' },
+          count: { type: 'integer', minimum: 1 },
+        },
+        required: ['name', 'context', 'count'],
+      },
+    },
+    sections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          count: { type: 'integer', minimum: 1 },
+        },
+        required: ['name', 'count'],
+      },
+    },
+    gaps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string', description: 'Короткий идентификатор латиницей snake_case' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          question: { type: 'string' },
+          severity: { type: 'string', enum: [...SEVERITY_LEVELS] },
+        },
+        required: ['id', 'title', 'description', 'question', 'severity'],
+      },
+    },
+    recommendations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          text: { type: 'string' },
+        },
+        required: ['text'],
+      },
+    },
+  },
+  required: ['entities', 'attributes', 'sections', 'gaps', 'recommendations'],
+}

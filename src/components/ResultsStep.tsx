@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { AnalysisResult, EntityType, Severity } from '../../shared/analysis'
+import type { AnalysisResult, AnalysisTiming, EntityType, Severity } from '../../shared/analysis'
 import { buildMarkdown, downloadText, copyToClipboard } from '../lib/exporter'
+import { formatDuration } from '../lib/formatDuration'
 
 // ---------- Цвета ----------
 
@@ -176,6 +177,70 @@ function RecommendationList({ recommendations }: { recommendations: AnalysisResu
   )
 }
 
+function TimingPanel({ timing }: { timing: AnalysisTiming }) {
+  const llmMs = timing.firstLlmMs + timing.retryLlmMs
+  const rows = [
+    { label: 'Запрос к модели', ms: timing.firstLlmMs },
+    ...(timing.retryLlmMs > 0 ? [{ label: 'Повторный запрос', ms: timing.retryLlmMs }] : []),
+    { label: 'Разбор JSON', ms: timing.parseMs },
+  ]
+  const maxMs = Math.max(timing.totalMs, 1)
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-800">Время анализа</h3>
+          <p className="text-sm text-slate-500">
+            {timing.model} · {timing.attempts === 1 ? 'один запрос' : `${timing.attempts} попытки`}
+          </p>
+        </div>
+        <p className="font-mono text-2xl font-semibold tabular-nums text-indigo-700">
+          {formatDuration(timing.totalMs)}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="mb-1 flex items-center justify-between text-sm">
+              <span className="text-slate-600">{row.label}</span>
+              <span className="font-mono tabular-nums text-slate-800">{formatDuration(row.ms)}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-indigo-500"
+                style={{ width: `${Math.max(1, Math.round((row.ms / maxMs) * 100))}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500 sm:grid-cols-4">
+        <div>
+          <dt>Доля LLM</dt>
+          <dd className="font-medium text-slate-700">
+            {timing.totalMs > 0 ? Math.round((llmMs / timing.totalMs) * 100) : 0}%
+          </dd>
+        </div>
+        <div>
+          <dt>Размер промпта</dt>
+          <dd className="font-medium text-slate-700">{timing.promptChars.toLocaleString('ru-RU')} симв.</dd>
+        </div>
+        <div>
+          <dt>Токены ответа</dt>
+          <dd className="font-medium text-slate-700">{timing.completionTokens ?? '—'}</dd>
+        </div>
+        <div>
+          <dt>Reasoning-токены</dt>
+          <dd className="font-medium text-slate-700">{timing.reasoningTokens ?? '—'}</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
 function ExportPanel({ result }: { result: AnalysisResult }) {
   const [copied, setCopied] = useState(false)
   const [showMd, setShowMd] = useState(false)
@@ -302,6 +367,12 @@ export default function ResultsStep({ result, onReset }: ResultsStepProps) {
         <h3 className="mb-3 text-lg font-semibold text-slate-800">Рекомендации</h3>
         <RecommendationList recommendations={result.recommendations} />
       </section>
+
+      {result.timing && (
+        <section className="mb-8">
+          <TimingPanel timing={result.timing} />
+        </section>
+      )}
 
       <section className="mb-8">
         <h3 className="mb-3 text-lg font-semibold text-slate-800">Экспорт результата</h3>

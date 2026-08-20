@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { MAX_TZ_CHARS, MIN_TZ_CHARS, type AnalysisResult } from '../../shared/analysis'
-import { analyzeWithOllama, OllamaError } from '../lib/ollama'
+import { analyzeWithOpenRouter, OpenRouterError } from '../lib/openrouter'
 import { requireAuth, type AuthVariables } from '../middleware/auth'
 
 const bodySchema = z.object({
@@ -34,14 +34,15 @@ analyze.post('/', requireAuth, async (c) => {
   const text = parsed.data.text
 
   try {
-    const llm = await analyzeWithOllama(text)
+    const { analysis, timing } = await analyzeWithOpenRouter(text)
     const result: AnalysisResult = {
-      ...llm,
+      ...analysis,
       words: countWords(text),
+      timing,
     }
     return c.json(result)
   } catch (err) {
-    if (err instanceof OllamaError) {
+    if (err instanceof OpenRouterError) {
       const status = err.kind === 'unavailable' ? 503 : 502
       return c.json({ error: err.message }, status)
     }

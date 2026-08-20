@@ -92,7 +92,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-100 py-6 text-center text-xs text-slate-400">
-        ТЗ-Ассистент · Прототип · Анализ LLM · Ollama (qwen3.5:4b-nvfp4)
+        ТЗ-Ассистент · Прототип · Анализ LLM · OpenRouter (deepseek/deepseek-v4-flash-0731)
       </footer>
     </div>
   )

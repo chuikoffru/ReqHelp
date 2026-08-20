@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ТЗ-Ассистент",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Анализ текста ТЗ со страницы — объекты, реквизиты, пробелы и рекомендации.",
   "minimum_chrome_version": "116",
   "action": {
@@ -28,11 +28,14 @@
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["extract.js", "content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "permissions": ["sidePanel", "activeTab", "scripting", "contextMenus", "cookies"],
   "host_permissions": [
+    "http://*/*",
+    "https://*/*",
     "http://localhost:5173/*",
     "http://127.0.0.1:5173/*",
     "http://localhost:3001/*",

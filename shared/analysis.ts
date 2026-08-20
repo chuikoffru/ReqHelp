@@ -51,6 +51,18 @@ export interface Recommendation {
   text: string
 }
 
+export interface AnalysisTiming {
+  totalMs: number
+  firstLlmMs: number
+  retryLlmMs: number
+  parseMs: number
+  attempts: number
+  promptChars: number
+  completionTokens: number | null
+  reasoningTokens: number | null
+  model: string
+}
+
 export interface AnalysisResult {
   words: number
   entities: FoundEntity[]
@@ -58,6 +70,7 @@ export interface AnalysisResult {
   sections: FoundSection[]
   gaps: Gap[]
   recommendations: Recommendation[]
+  timing?: AnalysisTiming
 }
 
-export type LlmAnalysis = Omit<AnalysisResult, 'words'>
+export type LlmAnalysis = Omit<AnalysisResult, 'words' | 'timing'>

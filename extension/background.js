@@ -140,26 +140,40 @@ async function resolveCaptureTabId(requestedTabId) {
   return Number.isInteger(activeTab?.id) ? activeTab.id : null
 }
 
-async function captureFromTab(tabId) {
-  try {
-    const response = await chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_TEXT' })
-    if (response?.ok) return response
-  } catch {
-    // content script еще не вставлен
-  }
+function bestCapture(captures) {
+  const usable = captures.filter(
+    (result) => result?.ok && typeof result.text === 'string' && result.text.trim(),
+  )
+  if (!usable.length) return null
+  usable.sort((a, b) => b.text.length - a.text.length)
+  return usable[0]
+}
 
+async function captureFromAllFrames(tabId) {
   try {
     await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId, allFrames: true },
       files: ['extract.js'],
     })
-    const [injected] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => collectPageText(),
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => (typeof collectPageText === 'function' ? collectPageText() : null),
     })
-    if (injected?.result?.ok) return injected.result
+    return bestCapture((injected ?? []).map((item) => item?.result))
   } catch {
-    return { ok: false, error: 'page_unavailable' }
+    return null
+  }
+}
+
+async function captureFromTab(tabId) {
+  const fromFrames = await captureFromAllFrames(tabId)
+  if (fromFrames) return fromFrames
+
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_TEXT' })
+    if (response?.ok && response.text?.trim()) return response
+  } catch {
+    // content script не вставлен или страница недоступна (PDF, chrome://, file://)
   }
 
   return { ok: false, error: 'page_unavailable' }
